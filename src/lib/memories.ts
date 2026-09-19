@@ -6,7 +6,7 @@ import type { EmotionalState, SharedMemory } from '@/types';
 export async function uploadMomentPhoto(memoryId: string, localUri: string): Promise<string> {
   const response = await fetch(localUri);
   const blob = await response.blob();
-  const objectRef = ref(storage, `moments/${memoryId}.jpg`);
+  const objectRef = ref(storage, `moments/${memoryId}/photo.jpg`);
   await uploadBytes(objectRef, blob);
   return getDownloadURL(objectRef);
 }

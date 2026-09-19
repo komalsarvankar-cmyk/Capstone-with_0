@@ -2,9 +2,12 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // moments/{memoryId}.jpg is readable/writable only by the uids listed
-    // as participants on the matching memories/{memoryId} Firestore doc.
-    match /moments/{memoryId}.jpg {
+    // moments/{memoryId}/photo.jpg is readable/writable only by the uids
+    // listed as participants on the matching memories/{memoryId} Firestore
+    // doc. memoryId must be its own path segment -- a wildcard variable
+    // cannot be combined with a literal suffix in the same segment
+    // (e.g. {memoryId}.jpg is not valid Storage rules syntax).
+    match /moments/{memoryId}/{fileName} {
       allow read, write: if request.auth != null
         && request.auth.uid in firestore.get(/databases/(default)/documents/memories/$(memoryId)).data.participants;
     }
