@@ -3,7 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { RootStackParamList } from '@/navigation/types';
-import { subscribeToAuthState } from '@/lib/auth';
+import { ensureUserDoc, subscribeToAuthState } from '@/lib/auth';
 import { registerForPushNotifications } from '@/lib/notifications';
 import { db } from '@/lib/firebase';
 import { MainTabs } from '@/navigation/MainTabs';
@@ -52,6 +52,15 @@ export function RootNavigator() {
 
   useEffect(() => {
     if (user) registerForPushNotifications();
+  }, [user]);
+
+  useEffect(() => {
+    // Self-healing: if the users/{uid} doc write at sign-up ever failed
+    // (e.g. transient error, rules not yet deployed) the account is left
+    // permanently broken -- every rule that reads resource.data on this
+    // doc denies, since resource is null for a nonexistent document. This
+    // recreates the doc (no-op if it already exists) on every session.
+    if (user) ensureUserDoc(user.uid, user.displayName ?? user.email?.split('@')[0] ?? 'Friend');
   }, [user]);
 
   useEffect(() => {
