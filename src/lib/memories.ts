@@ -32,7 +32,7 @@ export async function saveMoment(
     activityTitle,
     occurredAt: Date.now(),
     emotions: { [uid]: emotion },
-    note: options.note,
+    ...(options.note ? { note: options.note } : {}),
   };
   const docRef = await addDoc(collection(db, 'memories'), memory);
   return docRef.id;
@@ -42,6 +42,12 @@ export async function attachMomentPhoto(memoryId: string, localUri: string): Pro
   const photoUrl = await uploadMomentPhoto(memoryId, localUri);
   await updateDoc(doc(db, 'memories', memoryId), { photoUrl });
   return photoUrl;
+}
+
+export function watchMemory(memoryId: string, callback: (memory: (SharedMemory & { id: string }) | null) => void): Unsubscribe {
+  return onSnapshot(doc(db, 'memories', memoryId), (snapshot) => {
+    callback(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as SharedMemory & { id: string }) : null);
+  });
 }
 
 export function watchOurStory(uid: string, callback: (memories: (SharedMemory & { id: string })[]) => void): Unsubscribe {

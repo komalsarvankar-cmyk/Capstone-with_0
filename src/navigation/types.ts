@@ -1,4 +1,4 @@
-import type { Activity, Contact } from '@/types';
+import type { Activity, Contact, EmotionalState } from '@/types';
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -11,7 +11,7 @@ export type RootStackParamList = {
   MakePlan: { planId: string };
   PlanConfirmed: { planId: string };
   ActivityCheckin: { planId: string };
-  CaptureMoment: { planId: string };
+  CaptureMoment: { planId: string; activityTitle: string; emotion: EmotionalState };
   SharedMoment: { memoryId: string };
   Main: undefined;
 };

@@ -46,6 +46,8 @@ export interface Plan {
   note?: string;
   status: 'pending' | 'accepted' | 'completed';
   reminderSent?: boolean;
+  recurrence?: 'none' | 'daily' | 'weekly' | 'monthly';
+  recurrenceDuration?: '1 week' | '2 weeks' | '1 month' | '3 months';
 }
 
 /** Mirrors the `memories/{memoryId}` Firestore document. */

@@ -15,12 +15,18 @@ export const EMOTIONAL_CONFIGS: Record<EmotionalState, EmotionalConfig> = {
  * runtime substitute for Firestore-backed data.
  */
 export const CURATED_ACTIVITIES: Activity[] = [
-  { id: 'walk', title: 'Take a walk', duration: '15-30 min', description: 'A simple walk with no agenda.', iconName: 'walk', locationType: 'in-person', tags: ['Simple', 'Outdoors'] },
-  { id: 'sunset', title: 'Watch the sunset', duration: '15-30 min', description: 'Catch the day fading into evening.', iconName: 'sunset', locationType: 'either', tags: ['Relaxing'] },
-  { id: 'cook', title: 'Cook the same meal', duration: '30-60 min', description: 'Pick a simple recipe together.', iconName: 'utensils', locationType: 'either', tags: ['Hands-on'] },
-  { id: 'game', title: 'Play a quick game', duration: '15-30 min', description: 'A round of cards or a phone game.', iconName: 'gamepad', locationType: 'either', tags: ['Playful'] },
-  { id: 'playlist', title: 'Make a playlist together', duration: '20-30 min', description: 'Trade 5 songs each.', iconName: 'music', locationType: 'remote', tags: ['Creative'] },
-  { id: 'coffee', title: 'Have coffee together', duration: '20-30 min', description: 'A quiet cup at a corner cafe.', iconName: 'coffee', locationType: 'in-person', tags: ['Routine'] },
+  { id: 'walk', title: 'Take a walk', duration: '15-30 min', description: 'A simple walk with no agenda. Talk, wander, or just enjoy the fresh air together.', iconName: 'walk', locationType: 'in-person', tags: ['Simple', 'Outdoors', 'Low effort'] },
+  { id: 'sunset', title: 'Watch the sunset', duration: '15-30 min', description: 'Catch the day fading into evening from a bench, window, or local vantage point.', iconName: 'sunset', locationType: 'either', tags: ['Relaxing', 'Peaceful'] },
+  { id: 'cook', title: 'Cook the same meal', duration: '30-60 min', description: 'Pick a simple recipe together and cook side-by-side or over video.', iconName: 'utensils', locationType: 'either', tags: ['Hands-on', 'Comforting'] },
+  { id: 'game', title: 'Play a quick game', duration: '15-30 min', description: 'A round of cards, word puzzle, or phone game just for the fun of it.', iconName: 'gamepad', locationType: 'either', tags: ['Playful', 'Quick'] },
+  { id: 'playlist', title: 'Make a playlist together', duration: '20-30 min', description: 'Trade 5 songs each that remind you of this season or memories you share.', iconName: 'music', locationType: 'remote', tags: ['Creative', 'Anytime'] },
+  { id: 'coffee', title: 'Have coffee together', duration: '20-30 min', description: 'A quiet cup at a corner cafe or sitting on a porch before the day gets noisy.', iconName: 'coffee', locationType: 'in-person', tags: ['Routine', 'Easy'] },
+  { id: 'read', title: 'Read something together', duration: '20-40 min', description: 'Read the same short article, poem, or book chapter and discuss two lines.', iconName: 'book', locationType: 'either', tags: ['Reflective', 'Quiet'] },
+  { id: 'new-thing', title: 'Try something neither of you has done', duration: '30-60 min', description: 'Step into a new bakery, try origami, or take an unfamiliar route home.', iconName: 'compass', locationType: 'in-person', tags: ['Adventure', 'Novelty'] },
+  { id: 'photo-challenge', title: 'Send each other a photo challenge', duration: '10-15 min', description: 'Give each other three specific things to spot and photograph right now.', iconName: 'camera', locationType: 'remote', tags: ['Spontaneous', 'Visual'] },
+  { id: 'sketch', title: '5-minute blind portrait sketch', duration: '10-15 min', description: 'Sketch each other without looking at the paper and laugh at the outcome.', iconName: 'palette', locationType: 'in-person', tags: ['Creative', 'Laughter'] },
+  { id: 'bike-ride', title: 'Slow afternoon bike spin', duration: '30-45 min', description: 'Pedal gently through quiet side streets with zero rush.', iconName: 'bike', locationType: 'in-person', tags: ['Outdoors', 'Movement'] },
+  { id: 'nostalgia', title: 'Revisit an old memory', duration: '15-20 min', description: 'Pull up a photo from 3 years ago and tell the story of what really happened.', iconName: 'sparkles', locationType: 'either', tags: ['Sentimental', 'Story'] },
 ];
 
 /** Seed data for the `discoverItems` Firestore collection (U2/KTD7). */

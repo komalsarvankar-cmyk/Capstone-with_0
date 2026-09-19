@@ -36,7 +36,7 @@ export const suggestActivities = onCall(
       .map((title) => title.slice(0, MAX_TITLE_LENGTH));
 
     const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = [
       'Suggest 3 short, low-effort activity ideas for two close friends to do together.',

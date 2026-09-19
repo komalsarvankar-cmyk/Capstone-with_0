@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
 import { ChevronLeft, ArrowRight, Mail } from 'lucide-react-native';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import type { RootStackParamList } from '@/navigation/types';
-import { signUp } from '@/lib/auth';
+import { signIn, signUp } from '@/lib/auth';
 import { colors, fonts, radii, spacing } from '@/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateAccount'>;
@@ -16,8 +16,14 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CreateAccount'>;
  * (added on request); Apple Sign-In needs a paid Apple Developer account
  * and is deferred until one is available, so it's left out rather than
  * shipped as a non-functional button.
+ *
+ * Also doubles as the sign-in screen (mode toggle below) -- the original's
+ * "I already have an account" on Welcome just faked a jump into the app
+ * with no real auth; a real app needs an actual way back in for a
+ * returning user, so this reuses the same email form for both.
  */
 export function CreateAccountScreen({ navigation }: Props) {
+  const [mode, setMode] = useState<'signup' | 'signin'>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showEmailForm, setShowEmailForm] = useState(false);
@@ -29,10 +35,15 @@ export function CreateAccountScreen({ navigation }: Props) {
     setError(null);
     setLoading(true);
     try {
-      await signUp(email.trim(), password);
-      navigation.navigate('ConnectFriend');
+      if (mode === 'signup') {
+        await signUp(email.trim(), password);
+      } else {
+        await signIn(email.trim(), password);
+      }
+      // RootNavigator reacts to the auth state change and routes to
+      // ConnectFriend or Main on its own; no explicit navigation needed.
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create your account.');
+      setError(err instanceof Error ? err.message : 'Could not sign you in.');
     } finally {
       setLoading(false);
     }
@@ -47,9 +58,13 @@ export function CreateAccountScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.step}>STEP 1 OF 3</Text>
-        <Text style={styles.headline}>Let's get you in.</Text>
-        <Text style={styles.subtitle}>Create your account and start doing more with your friends.</Text>
+        {mode === 'signup' ? <Text style={styles.step}>STEP 1 OF 3</Text> : null}
+        <Text style={styles.headline}>{mode === 'signup' ? "Let's get you in." : 'Welcome back.'}</Text>
+        <Text style={styles.subtitle}>
+          {mode === 'signup'
+            ? 'Create your account and start doing more with your friends.'
+            : 'Sign in to pick up where you left off.'}
+        </Text>
 
         <View style={styles.form}>
           {hasGoogleSignIn ? <GoogleSignInButton onError={setError} /> : null}
@@ -83,12 +98,20 @@ export function CreateAccountScreen({ navigation }: Props) {
                 disabled={!email || !password || loading}
                 style={[styles.submit, (!email || !password) && styles.submitDisabled]}
               >
-                <Text style={styles.submitLabel}>{loading ? 'Creating account...' : 'Continue'}</Text>
+                <Text style={styles.submitLabel}>
+                  {loading ? (mode === 'signup' ? 'Creating account...' : 'Signing in...') : 'Continue'}
+                </Text>
                 {!loading && <ArrowRight size={16} color="#fff" />}
               </Pressable>
             </>
           )}
           {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <Pressable onPress={() => setMode(mode === 'signup' ? 'signin' : 'signup')} style={styles.toggleLink}>
+            <Text style={styles.toggleLinkText}>
+              {mode === 'signup' ? 'Already have an account? Sign in' : "New here? Create an account"}
+            </Text>
+          </Pressable>
         </View>
       </View>
 
@@ -144,6 +167,8 @@ const styles = StyleSheet.create({
   },
   submitDisabled: { opacity: 0.5 },
   submitLabel: { fontFamily: fonts.sansSemiBold, fontSize: 15, color: '#fff' },
+  toggleLink: { alignItems: 'center', paddingTop: spacing.xs },
+  toggleLinkText: { fontFamily: fonts.sansMedium, fontSize: 13, color: colors.lavender600 },
   footer: { alignItems: 'center', paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
   footerText: { fontFamily: fonts.sans, fontSize: 12, color: '#9CA3AF', textAlign: 'center', maxWidth: 280 },
 });

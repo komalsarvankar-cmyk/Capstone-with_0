@@ -65,6 +65,18 @@ export async function counterProposePlan(planId: string, scheduledAt: number, ac
   });
 }
 
+/** Persists the recurrence choice and final note set on the MakePlan screen. */
+export async function finalizePlan(
+  planId: string,
+  details: { note?: string; recurrence: Plan['recurrence']; recurrenceDuration?: Plan['recurrenceDuration'] },
+) {
+  await updateDoc(doc(db, 'plans', planId), {
+    note: details.note ?? null,
+    recurrence: details.recurrence,
+    recurrenceDuration: details.recurrence !== 'none' ? details.recurrenceDuration ?? null : null,
+  });
+}
+
 export async function completePlan(planId: string) {
   await updateDoc(doc(db, 'plans', planId), { status: 'completed' });
 }
