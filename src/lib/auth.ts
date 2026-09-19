@@ -13,7 +13,7 @@ export function subscribeToAuthState(callback: (user: User | null) => void) {
   return onAuthStateChanged(auth, callback);
 }
 
-async function ensureUserDoc(uid: string, displayName: string) {
+export async function ensureUserDoc(uid: string, displayName: string) {
   const ref = doc(db, 'users', uid);
   const snapshot = await getDoc(ref);
   if (!snapshot.exists()) {

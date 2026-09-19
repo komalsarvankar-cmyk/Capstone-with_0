@@ -1,28 +1,32 @@
 import React, { useState } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ChevronLeft, ArrowRight } from 'lucide-react-native';
-import { PrimaryButton } from '@/components/PrimaryButton';
+import Constants from 'expo-constants';
+import { ChevronLeft, ArrowRight, Mail } from 'lucide-react-native';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import type { RootStackParamList } from '@/navigation/types';
 import { signUp } from '@/lib/auth';
 import { colors, fonts, radii, spacing } from '@/theme';
+
+const hasGoogleSignIn = Boolean(Constants.expoConfig?.extra?.googleOAuthWebClientId);
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateAccount'>;
 
 /**
  * Ported from the original prototype's CreateAccountScreen (git show
- * cfaa64e:src/components/CreateAccountScreen.tsx). The original's Google/Apple
- * buttons were prototype-only mocks that proceeded on any tap; this build
- * only implements real Firebase email/password auth (R1), so those two
- * buttons are omitted rather than shipped as non-functional UI.
+ * cfaa64e:src/components/CreateAccountScreen.tsx). Google Sign-In is real
+ * (added on request); Apple Sign-In needs a paid Apple Developer account
+ * and is deferred until one is available, so it's left out rather than
+ * shipped as a non-functional button.
  */
 export function CreateAccountScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showEmailForm, setShowEmailForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleContinue = async () => {
+  const handleEmailContinue = async () => {
     setError(null);
     setLoading(true);
     try {
@@ -49,32 +53,43 @@ export function CreateAccountScreen({ navigation }: Props) {
         <Text style={styles.subtitle}>Create your account and start doing more with your friends.</Text>
 
         <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Your email address"
-            placeholderTextColor={colors.textSecondary}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor={colors.textSecondary}
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+          {hasGoogleSignIn ? <GoogleSignInButton onError={setError} /> : null}
+
+          {!showEmailForm ? (
+            <Pressable style={styles.oauthButton} onPress={() => setShowEmailForm(true)} accessibilityLabel="Continue with email">
+              <Mail size={17} color={colors.textSecondary} />
+              <Text style={styles.oauthLabel}>Continue with email</Text>
+            </Pressable>
+          ) : (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Your email address"
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor={colors.textSecondary}
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
+              <Pressable
+                onPress={handleEmailContinue}
+                disabled={!email || !password || loading}
+                style={[styles.submit, (!email || !password) && styles.submitDisabled]}
+              >
+                <Text style={styles.submitLabel}>{loading ? 'Creating account...' : 'Continue'}</Text>
+                {!loading && <ArrowRight size={16} color="#fff" />}
+              </Pressable>
+            </>
+          )}
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          <Pressable
-            onPress={handleContinue}
-            disabled={!email || !password || loading}
-            style={[styles.submit, (!email || !password) && styles.submitDisabled]}
-          >
-            <Text style={styles.submitLabel}>{loading ? 'Creating account...' : 'Continue'}</Text>
-            {!loading && <ArrowRight size={16} color="#fff" />}
-          </Pressable>
         </View>
       </View>
 
@@ -94,6 +109,18 @@ const styles = StyleSheet.create({
   headline: { fontFamily: fonts.serif, fontSize: 32, lineHeight: 37, color: colors.textPrimary, marginBottom: spacing.xs },
   subtitle: { fontFamily: fonts.sans, fontSize: 15, lineHeight: 22, color: colors.textSecondary, marginBottom: spacing.lg },
   form: { gap: 10 },
+  oauthButton: {
+    height: 52,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  oauthLabel: { fontFamily: fonts.sansMedium, fontSize: 15, color: colors.textPrimary },
   input: {
     height: 48,
     paddingHorizontal: spacing.md,
