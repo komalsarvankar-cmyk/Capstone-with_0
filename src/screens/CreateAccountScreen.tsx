@@ -8,8 +8,6 @@ import type { RootStackParamList } from '@/navigation/types';
 import { signUp } from '@/lib/auth';
 import { colors, fonts, radii, spacing } from '@/theme';
 
-const hasGoogleSignIn = Boolean(Constants.expoConfig?.extra?.googleOAuthWebClientId);
-
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateAccount'>;
 
 /**
@@ -25,6 +23,7 @@ export function CreateAccountScreen({ navigation }: Props) {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const hasGoogleSignIn = Boolean(Constants.expoConfig?.extra?.googleOAuthWebClientId);
 
   const handleEmailContinue = async () => {
     setError(null);
