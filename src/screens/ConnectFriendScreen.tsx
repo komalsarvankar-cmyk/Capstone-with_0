@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
-import * as Linking from 'expo-linking';
-import { ChevronLeft, Search, Link2, UserCheck } from 'lucide-react-native';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ChevronLeft, Search, UserCheck } from 'lucide-react-native';
 import { auth } from '@/lib/firebase';
-import { acceptInvite, createInvite, sendFriendRequest, savePhoneNumber, watchIncomingRequests, type IncomingRequest } from '@/lib/invites';
+import {
+  acceptInvite,
+  sendFriendRequest,
+  savePhoneNumber,
+  watchIncomingRequests,
+  watchRecentContacts,
+  type IncomingRequest,
+  type RecentContact,
+} from '@/lib/invites';
 import { findFriendsFromContacts, type FriendMatch } from '@/lib/contactsMatch';
 import { useOwnProfile } from '@/lib/useOwnProfile';
 import type { RootStackParamList } from '@/navigation/types';
@@ -12,24 +19,15 @@ import { colors, fonts, radii, spacing } from '@/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ConnectFriend'>;
 
-/** Extracts the inviteId from a withapp://invite/<id> deep link or a bare id/code. */
-function parseInviteId(input: string): string {
-  const trimmed = input.trim();
-  const parsed = Linking.parse(trimmed);
-  const pathId = parsed.path?.replace(/^invite\//, '') ?? parsed.path;
-  return pathId || trimmed;
-}
-
 /**
  * Ported from the original prototype's ConnectFriendScreen (git show
- * cfaa64e:src/components/ConnectFriendScreen.tsx). The original searched a
- * hardcoded contact list (CONTACT_SUGGESTIONS) and connected instantly on
- * tap, with no real account behind it. This build replaces that with real
- * phone-contacts discovery (findFriendsOnWith) -- tapping a match sends a
- * request the other person must approve, rather than connecting instantly,
- * since a real account shouldn't be linked without its owner's consent.
- * The share-link/paste-code path from the previous revision stays as a
- * fallback for when a contact match isn't found.
+ * cfaa64e:src/components/ConnectFriendScreen.tsx). Replaces the original's
+ * hardcoded contact list with real phone-contacts discovery
+ * (findFriendsOnWith) -- tapping a match sends a request the other person
+ * must approve, since a real account shouldn't be linked without consent.
+ * A Recent section (people already requested) avoids re-scanning contacts
+ * on every visit; the share-link/paste-code fallback was removed on
+ * request, so contacts search is the sole discovery path.
  */
 export function ConnectFriendScreen({ navigation }: Props) {
   const uid = auth.currentUser?.uid;
@@ -40,13 +38,18 @@ export function ConnectFriendScreen({ navigation }: Props) {
   const [searchingContacts, setSearchingContacts] = useState(false);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
   const [requests, setRequests] = useState<IncomingRequest[]>([]);
+  const [recent, setRecent] = useState<RecentContact[]>([]);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
-  const [inviteInput, setInviteInput] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!uid) return undefined;
     return watchIncomingRequests(uid, setRequests);
+  }, [uid]);
+
+  useEffect(() => {
+    if (!uid) return undefined;
+    return watchRecentContacts(uid, setRecent);
   }, [uid]);
 
   const handleSavePhone = async () => {
@@ -73,12 +76,12 @@ export function ConnectFriendScreen({ navigation }: Props) {
     }
   };
 
-  const handleSendRequest = async (match: FriendMatch) => {
+  const handleSendRequest = async (toUid: string) => {
     setError(null);
-    setSendingTo(match.uid);
+    setSendingTo(toUid);
     try {
-      await sendFriendRequest(match.uid);
-      setMatches((prev) => prev?.filter((m) => m.uid !== match.uid) ?? null);
+      await sendFriendRequest(toUid);
+      setMatches((prev) => prev?.filter((m) => m.uid !== toUid) ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send a request.');
     } finally {
@@ -98,30 +101,6 @@ export function ConnectFriendScreen({ navigation }: Props) {
       setError(err instanceof Error ? err.message : 'Could not accept that request.');
     } finally {
       setAcceptingId(null);
-    }
-  };
-
-  const handleShareLink = async () => {
-    setError(null);
-    try {
-      const link = await createInvite();
-      await Share.share({ message: `Join me on With.: ${link}` });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create an invite.');
-    }
-  };
-
-  const handleAcceptPasted = async () => {
-    if (!inviteInput.trim()) return;
-    setError(null);
-    try {
-      const inviteId = parseInviteId(inviteInput);
-      const { friendUid, friendDisplayName } = await acceptInvite(inviteId);
-      navigation.navigate('FriendConnected', {
-        friend: { uid: friendUid, displayName: friendDisplayName, initials: friendDisplayName.slice(0, 2).toUpperCase() },
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not accept that invite.');
     }
   };
 
@@ -186,6 +165,31 @@ export function ConnectFriendScreen({ navigation }: Props) {
           </View>
         ) : (
           <>
+            {recent.length > 0 ? (
+              <View style={{ gap: spacing.xs }}>
+                <Text style={styles.sectionLabel}>RECENT</Text>
+                {recent.map((contact) => (
+                  <View key={contact.toUid} style={styles.requestRow}>
+                    <View style={styles.avatarSm}>
+                      <Text style={styles.avatarSmText}>{contact.displayName.slice(0, 2).toUpperCase()}</Text>
+                    </View>
+                    <Text style={styles.requestName}>{contact.displayName}</Text>
+                    {contact.status === 'pending' ? (
+                      <Pressable
+                        style={styles.acceptPill}
+                        onPress={() => handleSendRequest(contact.toUid)}
+                        disabled={sendingTo === contact.toUid}
+                      >
+                        <Text style={styles.acceptPillText}>{sendingTo === contact.toUid ? 'Sending...' : 'Pending · resend'}</Text>
+                      </Pressable>
+                    ) : (
+                      <Text style={styles.connectedLabel}>Connected</Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
             <Text style={styles.sectionLabel}>FIND FRIENDS</Text>
             <Pressable style={styles.linkCard} onPress={handleFindContacts} disabled={searchingContacts}>
               <View style={styles.linkCardLeft}>
@@ -202,7 +206,7 @@ export function ConnectFriendScreen({ navigation }: Props) {
 
             {matches !== null ? (
               matches.length === 0 ? (
-                <Text style={styles.helperText}>None of your contacts are on With yet -- try sharing an invite link below.</Text>
+                <Text style={styles.helperText}>None of your contacts are on With yet.</Text>
               ) : (
                 <View style={{ gap: spacing.xs }}>
                   {matches.map((match) => (
@@ -211,7 +215,7 @@ export function ConnectFriendScreen({ navigation }: Props) {
                         <Text style={styles.avatarSmText}>{match.displayName.slice(0, 2).toUpperCase()}</Text>
                       </View>
                       <Text style={styles.requestName}>{match.displayName}</Text>
-                      <Pressable style={styles.acceptPill} onPress={() => handleSendRequest(match)} disabled={sendingTo === match.uid}>
+                      <Pressable style={styles.acceptPill} onPress={() => handleSendRequest(match.uid)} disabled={sendingTo === match.uid}>
                         <Text style={styles.acceptPillText}>{sendingTo === match.uid ? 'Sending...' : 'Send request'}</Text>
                       </Pressable>
                     </View>
@@ -221,32 +225,6 @@ export function ConnectFriendScreen({ navigation }: Props) {
             ) : null}
           </>
         )}
-
-        <Text style={styles.sectionLabel}>OR SHARE A LINK</Text>
-        <Pressable style={styles.linkCard} onPress={handleShareLink}>
-          <View style={styles.linkCardLeft}>
-            <View style={styles.linkIcon}>
-              <Link2 size={18} color={colors.lavender600} />
-            </View>
-            <View>
-              <Text style={styles.linkTitle}>Send invite link</Text>
-              <Text style={styles.linkSubtitle}>Invite anyone via Messages or WhatsApp</Text>
-            </View>
-          </View>
-        </Pressable>
-        <TextInput
-          style={styles.input}
-          placeholder="Or paste an invite link or code"
-          placeholderTextColor={colors.textSecondary}
-          autoCapitalize="none"
-          value={inviteInput}
-          onChangeText={setInviteInput}
-        />
-        {inviteInput.trim() ? (
-          <Pressable style={styles.confirmButton} onPress={handleAcceptPasted}>
-            <Text style={styles.confirmButtonLabel}>Accept invite</Text>
-          </Pressable>
-        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -291,6 +269,7 @@ const styles = StyleSheet.create({
   avatarSm: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.lavender100, alignItems: 'center', justifyContent: 'center' },
   avatarSmText: { fontFamily: fonts.serif, fontSize: 13, color: colors.lavender800 },
   requestName: { flex: 1, fontFamily: fonts.sansSemiBold, fontSize: 13, color: colors.textPrimary },
+  connectedLabel: { fontFamily: fonts.sansMedium, fontSize: 12, color: '#059669' },
   acceptPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -315,6 +294,4 @@ const styles = StyleSheet.create({
   saveButton: { paddingHorizontal: spacing.md, borderRadius: radii.md, backgroundColor: colors.lavender600, alignItems: 'center', justifyContent: 'center' },
   saveButtonLabel: { fontFamily: fonts.sansSemiBold, fontSize: 14, color: '#fff' },
   error: { fontFamily: fonts.sans, color: '#B91C1C', fontSize: 13 },
-  confirmButton: { height: 48, borderRadius: radii.pill, backgroundColor: colors.lavender600, alignItems: 'center', justifyContent: 'center' },
-  confirmButtonLabel: { fontFamily: fonts.sansSemiBold, fontSize: 15, color: '#fff' },
 });

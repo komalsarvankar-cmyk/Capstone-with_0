@@ -1,30 +1,19 @@
-import { addDoc, collection, doc, getDoc, onSnapshot, query, updateDoc, where, type Unsubscribe } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+  type Unsubscribe,
+} from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, app, db } from '@/lib/firebase';
 import { normalizePhoneKey } from '@/lib/phone';
-
-function randomCode(length = 8) {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < length; i += 1) {
-    code += alphabet[Math.floor(Math.random() * alphabet.length)];
-  }
-  return code;
-}
-
-/** Creates an open `invites/{inviteId}` doc and returns a shareable deep link (U4). */
-export async function createInvite(): Promise<string> {
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error('You must be signed in to invite a friend.');
-
-  const code = randomCode();
-  const ref = await addDoc(collection(db, 'invites'), {
-    fromUid: uid,
-    code,
-    status: 'pending',
-  });
-  return `withapp://invite/${ref.id}`;
-}
 
 export interface IncomingRequest {
   id: string;
@@ -34,8 +23,8 @@ export interface IncomingRequest {
 
 /**
  * Sends a targeted friend request to a specific uid (found via contacts
- * matching). Unlike createInvite's open link, only that uid may accept it
- * (enforced by acceptInvite and firestore.rules' toUid check).
+ * matching). Only that uid may accept it (enforced by acceptInvite and
+ * firestore.rules' toUid check).
  */
 export async function sendFriendRequest(toUid: string): Promise<void> {
   const uid = auth.currentUser?.uid;
@@ -44,6 +33,7 @@ export async function sendFriendRequest(toUid: string): Promise<void> {
     fromUid: uid,
     toUid,
     status: 'pending',
+    createdAt: serverTimestamp(),
   });
 }
 
@@ -59,6 +49,40 @@ export function watchIncomingRequests(uid: string, callback: (requests: Incoming
       }),
     );
     callback(requests);
+  });
+}
+
+export interface RecentContact {
+  toUid: string;
+  displayName: string;
+  status: 'pending' | 'accepted';
+}
+
+/**
+ * Live-watches people the signed-in user has previously sent a friend
+ * request to (most recent first), so returning to Connect Friend doesn't
+ * require re-scanning contacts every time. Deduplicated by recipient,
+ * keeping only the most recent request per person.
+ */
+export function watchRecentContacts(uid: string, callback: (contacts: RecentContact[]) => void): Unsubscribe {
+  const sentQuery = query(collection(db, 'invites'), where('fromUid', '==', uid), orderBy('createdAt', 'desc'));
+  return onSnapshot(sentQuery, async (snapshot) => {
+    const seen = new Set<string>();
+    const deduped: { toUid: string; status: 'pending' | 'accepted' }[] = [];
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data();
+      const toUid = data.toUid as string | undefined;
+      if (!toUid || seen.has(toUid)) continue;
+      seen.add(toUid);
+      deduped.push({ toUid, status: data.status === 'accepted' ? 'accepted' : 'pending' });
+    }
+    const contacts = await Promise.all(
+      deduped.slice(0, 10).map(async (entry) => {
+        const toSnap = await getDoc(doc(db, 'users', entry.toUid));
+        return { ...entry, displayName: toSnap.data()?.displayName ?? 'With user' };
+      }),
+    );
+    callback(contacts);
   });
 }
 
@@ -88,9 +112,4 @@ export async function acceptInvite(inviteId: string): Promise<AcceptInviteResult
   const callable = httpsCallable<{ inviteId: string }, AcceptInviteResult>(functions, 'acceptInvite');
   const result = await callable({ inviteId });
   return result.data;
-}
-
-export async function getInvite(inviteId: string) {
-  const snap = await getDoc(doc(db, 'invites', inviteId));
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
