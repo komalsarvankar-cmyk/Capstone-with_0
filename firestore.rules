@@ -12,31 +12,29 @@ service cloud.firestore {
     }
 
     // users/{uid}: a user manages their own doc, but connectedFriendUid is
-    // never settable by a direct client write -- it is written only by the
-    // invite-accept transaction (U4/KTD9), which runs as this same user.
-    // Firestore rules cannot distinguish "this write came from the accept
-    // transaction" from "this write came from anywhere else", so the
-    // transaction and this rule cooperate: the rule blocks a bare
-    // create/update that changes connectedFriendUid to a value the caller
-    // does not already have written via that transaction's own uid check.
+    // never settable by any client write, full stop -- a client-executed
+    // "accept transaction" would be indistinguishable from a malicious
+    // direct write under these rules, so the invite-accept path runs
+    // entirely server-side via the acceptInvite Admin-SDK callable
+    // function (U4/KTD9), which bypasses these rules by design.
     match /users/{uid} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.auth.uid == uid
         && !('connectedFriendUid' in request.resource.data);
       allow update: if isSignedIn() && request.auth.uid == uid
-        && (!('connectedFriendUid' in request.resource.data.diff(resource.data).affectedKeys())
-            || !('connectedFriendUid' in resource.data));
+        && !('connectedFriendUid' in request.resource.data.diff(resource.data).affectedKeys());
     }
 
-    // invites/{inviteId}: created by the inviter, read by inviter or the
-    // accepting user; accept transitions are the only allowed updates.
+    // invites/{inviteId}: created by the inviter, read by inviter or any
+    // signed-in user resolving a pending invite link. The pending-to-accepted
+    // transition happens only inside acceptInvite (Admin SDK), never via a
+    // direct client update.
     match /invites/{inviteId} {
       allow create: if isSignedIn() && request.resource.data.fromUid == request.auth.uid
         && request.resource.data.status == 'pending';
       allow read: if isSignedIn()
         && (resource.data.fromUid == request.auth.uid || resource.data.status == 'pending');
-      allow update: if isSignedIn() && resource.data.status == 'pending'
-        && request.resource.data.status == 'accepted';
+      allow update: if false;
     }
 
     // plans/{planId}: only the two participants may read or write, and a

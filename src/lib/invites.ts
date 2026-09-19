@@ -1,5 +1,6 @@
-import { addDoc, collection, doc, getDoc, runTransaction } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { addDoc, collection, doc, getDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { auth, app, db } from '@/lib/firebase';
 
 function randomCode(length = 8) {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -24,36 +25,23 @@ export async function createInvite(): Promise<string> {
   return `withapp://invite/${ref.id}`;
 }
 
+export interface AcceptInviteResult {
+  friendUid: string;
+  friendDisplayName: string;
+}
+
 /**
- * Accepts an invite as a single transaction (KTD9): checks the invite is
- * still pending, marks it accepted, and links both users' connectedFriendUid.
+ * Accepts an invite via the acceptInvite callable Cloud Function (U4,
+ * KTD9). Runs server-side (Admin SDK) rather than as a client transaction,
+ * because firestore.rules flatly denies any client write to
+ * connectedFriendUid -- a client-executed transaction would be
+ * indistinguishable from a malicious direct write under those rules.
  */
-export async function acceptInvite(inviteId: string): Promise<void> {
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error('You must be signed in to accept an invite.');
-
-  await runTransaction(db, async (transaction) => {
-    const inviteRef = doc(db, 'invites', inviteId);
-    const inviteSnap = await transaction.get(inviteRef);
-    if (!inviteSnap.exists() || inviteSnap.data().status !== 'pending') {
-      throw new Error('This invite has already been used.');
-    }
-    const fromUid = inviteSnap.data().fromUid as string;
-    if (fromUid === uid) {
-      throw new Error('You cannot accept your own invite.');
-    }
-
-    const selfRef = doc(db, 'users', uid);
-    const fromRef = doc(db, 'users', fromUid);
-    const selfSnap = await transaction.get(selfRef);
-    if (selfSnap.exists() && selfSnap.data().connectedFriendUid) {
-      throw new Error('You are already connected with a friend.');
-    }
-
-    transaction.update(inviteRef, { status: 'accepted' });
-    transaction.set(selfRef, { connectedFriendUid: fromUid }, { merge: true });
-    transaction.set(fromRef, { connectedFriendUid: uid }, { merge: true });
-  });
+export async function acceptInvite(inviteId: string): Promise<AcceptInviteResult> {
+  const functions = getFunctions(app);
+  const callable = httpsCallable<{ inviteId: string }, AcceptInviteResult>(functions, 'acceptInvite');
+  const result = await callable({ inviteId });
+  return result.data;
 }
 
 export async function getInvite(inviteId: string) {

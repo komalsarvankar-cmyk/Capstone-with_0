@@ -18,6 +18,9 @@ export function CaptureMomentScreen({ navigation }: Props) {
   const [note, setNote] = useState('');
   const [state, setState] = useState<CaptureState>('picking');
   const [error, setError] = useState<string | null>(null);
+  // Set once the memories doc is created, so a retry after a failed photo
+  // upload reuses it instead of calling saveMoment again (no duplicates).
+  const [savedMemoryId, setSavedMemoryId] = useState<string | null>(null);
 
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
@@ -29,7 +32,8 @@ export function CaptureMomentScreen({ navigation }: Props) {
     setState('uploading');
     setError(null);
     try {
-      const memoryId = await saveMoment(friendUid, 'Activity', 'calming', { note: note || undefined });
+      const memoryId = savedMemoryId ?? (await saveMoment(friendUid, 'Activity', 'calming', { note: note || undefined }));
+      setSavedMemoryId(memoryId);
       if (localUri) await attachMomentPhoto(memoryId, localUri);
       setState('success');
       navigation.navigate('SharedMoment', { memoryId });
