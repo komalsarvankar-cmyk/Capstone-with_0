@@ -5,11 +5,12 @@ import { signOut } from '@/lib/auth';
 import { auth } from '@/lib/firebase';
 import { useConnectedFriend } from '@/lib/useConnectedFriend';
 import { useFriendProfile } from '@/lib/useFriendProfile';
+import { initialsOf } from '@/lib/initials';
 import { colors, fonts, radii, spacing } from '@/theme';
 
-function initialsOf(nameOrEmail: string): string {
+function initialsForAccount(nameOrEmail: string): string {
   const base = nameOrEmail.includes('@') ? nameOrEmail.split('@')[0] : nameOrEmail;
-  return base.slice(0, 2).toUpperCase();
+  return initialsOf(base);
 }
 
 /**
@@ -37,7 +38,7 @@ export function YouScreen() {
         <View style={styles.profileCard}>
           <View style={styles.profileRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initialsOf(email || 'You')}</Text>
+              <Text style={styles.avatarText}>{initialsForAccount(email || 'You')}</Text>
             </View>
             <View>
               <Text style={styles.profileEmail}>{email}</Text>

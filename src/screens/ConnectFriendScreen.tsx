@@ -13,6 +13,7 @@ import {
   type RecentContact,
 } from '@/lib/invites';
 import { findFriendsFromContacts, type FriendMatch } from '@/lib/contactsMatch';
+import { initialsOf } from '@/lib/initials';
 import { useOwnProfile } from '@/lib/useOwnProfile';
 import type { RootStackParamList } from '@/navigation/types';
 import { colors, fonts, radii, spacing } from '@/theme';
@@ -95,7 +96,7 @@ export function ConnectFriendScreen({ navigation }: Props) {
     try {
       const { friendUid, friendDisplayName } = await acceptInvite(request.id);
       navigation.navigate('FriendConnected', {
-        friend: { uid: friendUid, displayName: friendDisplayName, initials: friendDisplayName.slice(0, 2).toUpperCase() },
+        friend: { uid: friendUid, displayName: friendDisplayName, initials: initialsOf(friendDisplayName) },
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not accept that request.');
@@ -127,7 +128,7 @@ export function ConnectFriendScreen({ navigation }: Props) {
             {requests.map((request) => (
               <View key={request.id} style={styles.requestRow}>
                 <View style={styles.avatarSm}>
-                  <Text style={styles.avatarSmText}>{request.fromDisplayName.slice(0, 2).toUpperCase()}</Text>
+                  <Text style={styles.avatarSmText}>{initialsOf(request.fromDisplayName)}</Text>
                 </View>
                 <Text style={styles.requestName}>{request.fromDisplayName}</Text>
                 <Pressable style={styles.acceptPill} onPress={() => handleAcceptRequest(request)} disabled={acceptingId === request.id}>
@@ -165,31 +166,6 @@ export function ConnectFriendScreen({ navigation }: Props) {
           </View>
         ) : (
           <>
-            {recent.length > 0 ? (
-              <View style={{ gap: spacing.xs }}>
-                <Text style={styles.sectionLabel}>RECENT</Text>
-                {recent.map((contact) => (
-                  <View key={contact.toUid} style={styles.requestRow}>
-                    <View style={styles.avatarSm}>
-                      <Text style={styles.avatarSmText}>{contact.displayName.slice(0, 2).toUpperCase()}</Text>
-                    </View>
-                    <Text style={styles.requestName}>{contact.displayName}</Text>
-                    {contact.status === 'pending' ? (
-                      <Pressable
-                        style={styles.acceptPill}
-                        onPress={() => handleSendRequest(contact.toUid)}
-                        disabled={sendingTo === contact.toUid}
-                      >
-                        <Text style={styles.acceptPillText}>{sendingTo === contact.toUid ? 'Sending...' : 'Pending · resend'}</Text>
-                      </Pressable>
-                    ) : (
-                      <Text style={styles.connectedLabel}>Connected</Text>
-                    )}
-                  </View>
-                ))}
-              </View>
-            ) : null}
-
             <Text style={styles.sectionLabel}>FIND FRIENDS</Text>
             <Pressable style={styles.linkCard} onPress={handleFindContacts} disabled={searchingContacts}>
               <View style={styles.linkCardLeft}>
@@ -212,7 +188,7 @@ export function ConnectFriendScreen({ navigation }: Props) {
                   {matches.map((match) => (
                     <View key={match.uid} style={styles.requestRow}>
                       <View style={styles.avatarSm}>
-                        <Text style={styles.avatarSmText}>{match.displayName.slice(0, 2).toUpperCase()}</Text>
+                        <Text style={styles.avatarSmText}>{initialsOf(match.displayName)}</Text>
                       </View>
                       <Text style={styles.requestName}>{match.displayName}</Text>
                       <Pressable style={styles.acceptPill} onPress={() => handleSendRequest(match.uid)} disabled={sendingTo === match.uid}>
@@ -222,6 +198,23 @@ export function ConnectFriendScreen({ navigation }: Props) {
                   ))}
                 </View>
               )
+            ) : null}
+
+            {recent.length > 0 ? (
+              <View style={{ gap: spacing.xs }}>
+                <Text style={styles.sectionLabel}>RECENT</Text>
+                {recent.map((contact) => (
+                  <View key={contact.toUid} style={styles.requestRow}>
+                    <View style={styles.avatarSm}>
+                      <Text style={styles.avatarSmText}>{initialsOf(contact.displayName)}</Text>
+                    </View>
+                    <Text style={styles.requestName}>{contact.displayName}</Text>
+                    <Text style={contact.status === 'accepted' ? styles.connectedLabel : styles.pendingLabel}>
+                      {contact.status === 'accepted' ? 'Connected' : 'Pending'}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             ) : null}
           </>
         )}
@@ -270,6 +263,7 @@ const styles = StyleSheet.create({
   avatarSmText: { fontFamily: fonts.serif, fontSize: 13, color: colors.lavender800 },
   requestName: { flex: 1, fontFamily: fonts.sansSemiBold, fontSize: 13, color: colors.textPrimary },
   connectedLabel: { fontFamily: fonts.sansMedium, fontSize: 12, color: '#059669' },
+  pendingLabel: { fontFamily: fonts.sansMedium, fontSize: 12, color: '#9CA3AF' },
   acceptPill: {
     flexDirection: 'row',
     alignItems: 'center',
