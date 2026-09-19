@@ -84,4 +84,8 @@ export interface UserDoc {
   displayName: string;
   connectedFriendUid?: string;
   expoPushToken?: string;
+  /** Raw phone number as entered, for display only. */
+  phone?: string;
+  /** Normalized last-10-digit key used for contacts matching (findFriendsOnWith). */
+  phoneKey?: string;
 }

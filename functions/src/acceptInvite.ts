@@ -23,9 +23,16 @@ export const acceptInvite = onCall(async (request) => {
     if (!inviteSnap.exists || inviteSnap.data()?.status !== 'pending') {
       throw new HttpsError('failed-precondition', 'This invite has already been used.');
     }
-    const fromUid = inviteSnap.data()?.fromUid as string;
+    const invite = inviteSnap.data();
+    const fromUid = invite?.fromUid as string;
     if (fromUid === uid) {
       throw new HttpsError('failed-precondition', 'You cannot accept your own invite.');
+    }
+    // Targeted requests (from contacts matching) may only be accepted by
+    // the addressed user; open share-link invites (no toUid) may be
+    // accepted by whoever holds the link, per the original invite design.
+    if (invite?.toUid && invite.toUid !== uid) {
+      throw new HttpsError('permission-denied', 'This request was not sent to you.');
     }
 
     const selfRef = db.collection('users').doc(uid);

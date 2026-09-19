@@ -25,15 +25,18 @@ service cloud.firestore {
         && !('connectedFriendUid' in request.resource.data.diff(resource.data).affectedKeys());
     }
 
-    // invites/{inviteId}: created by the inviter, read by inviter or any
-    // signed-in user resolving a pending invite link. The pending-to-accepted
-    // transition happens only inside acceptInvite (Admin SDK), never via a
-    // direct client update.
+    // invites/{inviteId}: created by the inviter, read by the inviter, the
+    // addressed recipient (toUid, for a contacts-match friend request), or
+    // any signed-in user resolving an open (no toUid) pending invite link.
+    // The pending-to-accepted transition happens only inside acceptInvite
+    // (Admin SDK), never via a direct client update.
     match /invites/{inviteId} {
       allow create: if isSignedIn() && request.resource.data.fromUid == request.auth.uid
         && request.resource.data.status == 'pending';
       allow read: if isSignedIn()
-        && (resource.data.fromUid == request.auth.uid || resource.data.status == 'pending');
+        && (resource.data.fromUid == request.auth.uid
+            || resource.data.toUid == request.auth.uid
+            || (resource.data.status == 'pending' && !('toUid' in resource.data)));
       allow update: if false;
     }
 

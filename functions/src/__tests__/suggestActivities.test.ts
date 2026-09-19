@@ -1,4 +1,4 @@
-import { parseSuggestions } from '../suggestActivities';
+import { parseSuggestions } from '../geminiParsing';
 
 describe('parseSuggestions (U5)', () => {
   it('parses a raw JSON array response', () => {
