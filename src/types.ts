@@ -22,6 +22,7 @@ export interface EmotionalConfig {
   dotColor: string;
   bgColor: string;
   textColor: string;
+  borderColor: string;
   description: string;
 }
 

@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { SectionList, StyleSheet, Text, View } from 'react-native';
-import { Screen } from '@/components/Screen';
 import { collection, getDocs } from 'firebase/firestore';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { db } from '@/lib/firebase';
 import type { DiscoverItem } from '@/types';
-import { colors, radii, spacing } from '@/theme';
+import { colors, fonts, radii, spacing } from '@/theme';
 
-const SECTION_TITLES: Record<DiscoverItem['section'], string> = {
-  'for-you': 'For you two',
-  experiences: 'Experiences',
-  community: 'Community',
-  'near-you': 'Near you',
-};
+const SECTIONS: { id: DiscoverItem['section']; label: string }[] = [
+  { id: 'for-you', label: 'For you two' },
+  { id: 'experiences', label: 'Experiences' },
+  { id: 'community', label: 'Community' },
+  { id: 'near-you', label: 'Near you' },
+];
 
+/** Ported from the original prototype's DiscoverScreen (git show cfaa64e:src/components/DiscoverScreen.tsx). */
 export function DiscoverScreen() {
+  const [section, setSection] = useState<DiscoverItem['section']>('for-you');
   const [items, setItems] = useState<DiscoverItem[]>([]);
 
   useEffect(() => {
@@ -22,30 +23,87 @@ export function DiscoverScreen() {
     });
   }, []);
 
-  const sections = (['for-you', 'experiences', 'community', 'near-you'] as const)
-    .map((section) => ({ title: SECTION_TITLES[section], data: items.filter((item) => item.section === section) }))
-    .filter((section) => section.data.length > 0);
+  const visibleItems = items.filter((item) => item.section === section);
 
   return (
-    <Screen title="Discover" subtitle="Curated ideas for you two.">
-      <SectionList
-        sections={sections}
-        keyExtractor={(item) => item.id}
-        renderSectionHeader={({ section }) => <Text style={styles.sectionTitle}>{section.title}</Text>}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.subtitle}>{item.subtitle}</Text>
-          </View>
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Discover</Text>
+        <Text style={styles.subtitle}>Inspiration and gentle spaces for friends.</Text>
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={{ gap: 6 }}>
+        {SECTIONS.map((tab) => {
+          const active = tab.id === section;
+          return (
+            <Pressable
+              key={tab.id}
+              onPress={() => setSection(tab.id)}
+              style={[styles.filterPill, active && styles.filterPillActive]}
+            >
+              <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>{tab.label}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      <ScrollView contentContainerStyle={styles.content}>
+        {visibleItems.length === 0 ? (
+          <Text style={styles.emptyText}>Nothing here yet -- check back soon.</Text>
+        ) : (
+          visibleItems.map((item) => (
+            <View key={item.id} style={styles.card}>
+              {item.badge ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{item.badge.toUpperCase()}</Text>
+                </View>
+              ) : null}
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
+              <Text style={styles.cardMeta}>
+                {item.dateTime}
+                {item.location ? ` • ${item.location}` : ''} • {item.duration}
+              </Text>
+              <Text style={styles.cardDescription}>{item.description}</Text>
+            </View>
+          ))
         )}
-      />
-    </Screen>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs },
-  card: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.md, backgroundColor: colors.surface, marginBottom: spacing.sm },
-  title: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
-  subtitle: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.sm, gap: spacing.xs },
+  title: { fontFamily: fonts.serifItalic, fontSize: 26, color: colors.textPrimary },
+  subtitle: { fontFamily: fonts.sans, fontSize: 13, color: colors.textSecondary },
+  filterRow: { flexGrow: 0, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterPillActive: { backgroundColor: colors.lavender600, borderColor: colors.lavender600 },
+  filterLabel: { fontFamily: fonts.sansMedium, fontSize: 12.5, color: colors.textSecondary },
+  filterLabelActive: { color: '#fff', fontFamily: fonts.sansSemiBold },
+  content: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.sm },
+  emptyText: { fontFamily: fonts.sans, fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.xl },
+  card: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    gap: 4,
+  },
+  badge: { alignSelf: 'flex-start', backgroundColor: colors.lavender100, borderRadius: radii.pill, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 2 },
+  badgeText: { fontFamily: fonts.sansSemiBold, fontSize: 10, color: colors.lavender700 },
+  cardTitle: { fontFamily: fonts.serif, fontSize: 17, color: colors.textPrimary },
+  cardSubtitle: { fontFamily: fonts.sans, fontSize: 13, color: colors.textSecondary },
+  cardMeta: { fontFamily: fonts.sans, fontSize: 11.5, color: '#9CA3AF' },
+  cardDescription: { fontFamily: fonts.sans, fontSize: 13, color: '#4B5563', lineHeight: 19, marginTop: 4 },
 });

@@ -1,4 +1,13 @@
-import type { Activity, DiscoverItem } from '@/types';
+import type { Activity, DiscoverItem, EmotionalConfig, EmotionalState } from '@/types';
+
+/** Ported verbatim from the original prototype's src/data.ts EMOTIONAL_CONFIGS. */
+export const EMOTIONAL_CONFIGS: Record<EmotionalState, EmotionalConfig> = {
+  fun: { id: 'fun', label: 'Fun', dotColor: '#F59E0B', bgColor: '#FEF3C7', textColor: '#92400E', borderColor: '#FDE68A', description: 'Playful energy, laughter, and high spirits' },
+  calming: { id: 'calming', label: 'Calming', dotColor: '#818CF8', bgColor: '#EEF2FF', textColor: '#3730A3', borderColor: '#C7D2FE', description: 'Slow pace, deep breath, restorative stillness' },
+  meaningful: { id: 'meaningful', label: 'Meaningful', dotColor: '#EC4899', bgColor: '#FDF2F8', textColor: '#9D174D', borderColor: '#FBCFE8', description: 'Heartfelt vulnerability and thoughtful connection' },
+  unexpected: { id: 'unexpected', label: 'Unexpected', dotColor: '#F97316', bgColor: '#FFF7ED', textColor: '#9A3412', borderColor: '#FED7AA', description: 'A surprising twist, spontaneous discovery' },
+  'just-nice': { id: 'just-nice', label: 'Just nice', dotColor: '#10B981', bgColor: '#ECFDF5', textColor: '#065F46', borderColor: '#A7F3D0', description: 'Simple comfort, natural flow, easy company' },
+};
 
 /**
  * Curated activity library (U5). Ported from the original prototype's

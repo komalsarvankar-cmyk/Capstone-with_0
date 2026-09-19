@@ -3,11 +3,28 @@ import {
   collection,
   doc,
   onSnapshot,
+  orderBy,
+  query,
   updateDoc,
+  where,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { Activity, Plan } from '@/types';
+
+/** Watches the caller's single not-yet-completed plan, if any (Home screen's "Your Next Moment"). */
+export function watchCurrentPlan(uid: string, callback: (plan: (Plan & { id: string }) | null) => void): Unsubscribe {
+  const currentPlanQuery = query(
+    collection(db, 'plans'),
+    where('participants', 'array-contains', uid),
+    where('status', 'in', ['pending', 'accepted']),
+    orderBy('scheduledAt', 'asc'),
+  );
+  return onSnapshot(currentPlanQuery, (snapshot) => {
+    const first = snapshot.docs[0];
+    callback(first ? ({ id: first.id, ...first.data() } as Plan & { id: string }) : null);
+  });
+}
 
 /** Creates a `plans/{planId}` doc with both uids as participants (U6). */
 export async function proposePlan(
