@@ -27,7 +27,9 @@ export function PrimaryButton({
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ disabled: disabled || loading }}
+      hitSlop={8}
     >
       {loading ? (
         <ActivityIndicator color={isSecondary ? colors.primary : '#fff'} />

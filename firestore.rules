@@ -62,5 +62,12 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if false;
     }
+
+    // rateLimits/{id}: internal to suggestActivities' Admin-SDK rate
+    // limiter (U11); the Admin SDK bypasses rules, so this is defense in
+    // depth against any client ever reaching this collection.
+    match /rateLimits/{id} {
+      allow read, write: if false;
+    }
   }
 }

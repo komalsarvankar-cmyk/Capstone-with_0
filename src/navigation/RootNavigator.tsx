@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { User } from 'firebase/auth';
 import type { RootStackParamList } from '@/navigation/types';
 import { subscribeToAuthState } from '@/lib/auth';
+import { registerForPushNotifications } from '@/lib/notifications';
 import { MainTabs } from '@/navigation/MainTabs';
 import { WelcomeScreen } from '@/screens/WelcomeScreen';
 import { CreateAccountScreen } from '@/screens/CreateAccountScreen';
@@ -27,6 +28,10 @@ export function RootNavigator() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
 
   useEffect(() => subscribeToAuthState(setUser), []);
+
+  useEffect(() => {
+    if (user) registerForPushNotifications();
+  }, [user]);
 
   if (user === undefined) return null; // splash/loading; auth state not yet known
 
