@@ -1,21 +1,13 @@
-import type { Activity, DiscoverItem } from '@/types';
-
 /**
- * Curated activity library (U5). Ported from the original prototype's
- * src/data.ts; used as the client-side fallback/default list, never as a
- * runtime substitute for Firestore-backed data.
+ * One-time seed script for the discoverItems Firestore collection (U2,
+ * KTD7). Run with `npm run seed:discover` from functions/ after
+ * `firebase login` and with GOOGLE_APPLICATION_CREDENTIALS or default
+ * project credentials available. Idempotent: uses each item's stable id
+ * as the document id, so re-running overwrites rather than duplicating.
  */
-export const CURATED_ACTIVITIES: Activity[] = [
-  { id: 'walk', title: 'Take a walk', duration: '15-30 min', description: 'A simple walk with no agenda.', iconName: 'walk', locationType: 'in-person', tags: ['Simple', 'Outdoors'] },
-  { id: 'sunset', title: 'Watch the sunset', duration: '15-30 min', description: 'Catch the day fading into evening.', iconName: 'sunset', locationType: 'either', tags: ['Relaxing'] },
-  { id: 'cook', title: 'Cook the same meal', duration: '30-60 min', description: 'Pick a simple recipe together.', iconName: 'utensils', locationType: 'either', tags: ['Hands-on'] },
-  { id: 'game', title: 'Play a quick game', duration: '15-30 min', description: 'A round of cards or a phone game.', iconName: 'gamepad', locationType: 'either', tags: ['Playful'] },
-  { id: 'playlist', title: 'Make a playlist together', duration: '20-30 min', description: 'Trade 5 songs each.', iconName: 'music', locationType: 'remote', tags: ['Creative'] },
-  { id: 'coffee', title: 'Have coffee together', duration: '20-30 min', description: 'A quiet cup at a corner cafe.', iconName: 'coffee', locationType: 'in-person', tags: ['Routine'] },
-];
+import { db } from '../admin';
 
-/** Seed data for the `discoverItems` Firestore collection (U2/KTD7). */
-export const DISCOVER_ITEMS: DiscoverItem[] = [
+const DISCOVER_ITEMS = [
   { id: 'disc-1', section: 'for-you', title: 'Golden Hour Audio Walk', subtitle: 'Synchronized walk with quiet prompts', dateTime: 'Any day at sunset', description: 'Put your earbuds in, head outside simultaneously, and describe the evening light.', category: 'Curated for You', duration: '20 min', badge: 'Popular for pairs' },
   { id: 'disc-2', section: 'for-you', title: 'Swap Childhood Neighborhood Stories', subtitle: 'Low-key evening coffee conversation', dateTime: 'Flexible', description: 'Show each other your childhood elementary schools on street view.', category: 'Curated for You', duration: '25 min' },
   { id: 'disc-3', section: 'experiences', title: 'Make Something Together', subtitle: 'Ceramic Hand-Building Workshop', dateTime: 'Saturday - 5:00 PM', location: 'Cobble Hill Studio', description: 'A cozy 2-hour session shaping clay pinch pots.', category: 'Creative Workshop', duration: '2 hours', badge: 'Join with your friend' },
@@ -25,3 +17,17 @@ export const DISCOVER_ITEMS: DiscoverItem[] = [
   { id: 'disc-7', section: 'near-you', title: 'Sunset over Pier 6 Waterfront', subtitle: '0.8 miles away - Quiet vantage point', dateTime: 'Best at 6:45 PM', location: 'Brooklyn Bridge Park', description: 'Secluded wooden benches overlooking the harbor lights.', category: 'Local Gem', duration: '20-40 min' },
   { id: 'disc-8', section: 'near-you', title: 'Botanical Garden Greenhouse Walk', subtitle: '1.2 miles away - Free Tuesdays', dateTime: 'Tues-Sun - 10 AM-5 PM', location: 'Washington Ave Entrance', description: 'Lush tropical warmth and quiet pathways.', category: 'Local Gem', duration: '45 min' },
 ];
+
+async function seed() {
+  const batch = db.batch();
+  for (const item of DISCOVER_ITEMS) {
+    batch.set(db.collection('discoverItems').doc(item.id), item);
+  }
+  await batch.commit();
+  console.log(`Seeded ${DISCOVER_ITEMS.length} discoverItems.`);
+}
+
+seed().catch((error) => {
+  console.error('Seed failed:', error);
+  process.exit(1);
+});

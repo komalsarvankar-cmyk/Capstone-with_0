@@ -1,0 +1,71 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isParticipant(data) {
+      return isSignedIn() && request.auth.uid in data.participants;
+    }
+
+    // users/{uid}: a user manages their own doc, but connectedFriendUid is
+    // never settable by any client write, full stop -- a client-executed
+    // "accept transaction" would be indistinguishable from a malicious
+    // direct write under these rules, so the invite-accept path runs
+    // entirely server-side via the acceptInvite Admin-SDK callable
+    // function (U4/KTD9), which bypasses these rules by design.
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == uid
+        && !('connectedFriendUid' in request.resource.data);
+      allow update: if isSignedIn() && request.auth.uid == uid
+        && !('connectedFriendUid' in request.resource.data.diff(resource.data).affectedKeys());
+    }
+
+    // invites/{inviteId}: created by the inviter, read by inviter or any
+    // signed-in user resolving a pending invite link. The pending-to-accepted
+    // transition happens only inside acceptInvite (Admin SDK), never via a
+    // direct client update.
+    match /invites/{inviteId} {
+      allow create: if isSignedIn() && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow read: if isSignedIn()
+        && (resource.data.fromUid == request.auth.uid || resource.data.status == 'pending');
+      allow update: if false;
+    }
+
+    // plans/{planId}: only the two participants may read or write, and a
+    // plan may only ever be created with exactly the caller and the
+    // caller's current connectedFriendUid as participants.
+    match /plans/{planId} {
+      allow read, update: if isParticipant(resource.data);
+      allow create: if isSignedIn()
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.participants.size() == 2;
+    }
+
+    // memories/{memoryId}: same participant-only access as plans. update is
+    // restricted to attaching a photoUrl after creation (CaptureMoment).
+    match /memories/{memoryId} {
+      allow create: if isParticipant(request.resource.data);
+      allow read, update: if isParticipant(resource.data);
+    }
+
+    // discoverItems/{itemId}: readable by any signed-in user, never
+    // writable from the client (KTD7 -- admin-curated, seeded server-side).
+    match /discoverItems/{itemId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // rateLimits/{id}: internal to suggestActivities' Admin-SDK rate
+    // limiter (U11); the Admin SDK bypasses rules, so this is defense in
+    // depth against any client ever reaching this collection.
+    match /rateLimits/{id} {
+      allow read, write: if false;
+    }
+  }
+}

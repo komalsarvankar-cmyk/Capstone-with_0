@@ -1,6 +1,0 @@
-{
-  "name": "Tandem",
-  "description": "With: A friendship app designed for friends who want to spend more meaningful time together through small everyday activities and shared moments.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
