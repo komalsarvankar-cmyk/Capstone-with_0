@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ChevronLeft, Search, UserCheck } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Search, UserCheck } from 'lucide-react-native';
 import { auth } from '@/lib/firebase';
 import {
   acceptInvite,
@@ -209,9 +209,11 @@ export function ConnectFriendScreen({ navigation }: Props) {
                       <Text style={styles.avatarSmText}>{initialsOf(contact.displayName)}</Text>
                     </View>
                     <Text style={styles.requestName}>{contact.displayName}</Text>
-                    <Text style={contact.status === 'accepted' ? styles.connectedLabel : styles.pendingLabel}>
-                      {contact.status === 'accepted' ? 'Connected' : 'Pending'}
-                    </Text>
+                    {contact.status === 'accepted' ? (
+                      <Text style={styles.connectedLabel}>Connected</Text>
+                    ) : (
+                      <ChevronRight size={18} color="#9CA3AF" />
+                    )}
                   </View>
                 ))}
               </View>
@@ -263,7 +265,6 @@ const styles = StyleSheet.create({
   avatarSmText: { fontFamily: fonts.serif, fontSize: 13, color: colors.lavender800 },
   requestName: { flex: 1, fontFamily: fonts.sansSemiBold, fontSize: 13, color: colors.textPrimary },
   connectedLabel: { fontFamily: fonts.sansMedium, fontSize: 12, color: '#059669' },
-  pendingLabel: { fontFamily: fonts.sansMedium, fontSize: 12, color: '#9CA3AF' },
   acceptPill: {
     flexDirection: 'row',
     alignItems: 'center',
