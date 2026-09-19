@@ -1,0 +1,66 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isParticipant(data) {
+      return isSignedIn() && request.auth.uid in data.participants;
+    }
+
+    // users/{uid}: a user manages their own doc, but connectedFriendUid is
+    // never settable by a direct client write -- it is written only by the
+    // invite-accept transaction (U4/KTD9), which runs as this same user.
+    // Firestore rules cannot distinguish "this write came from the accept
+    // transaction" from "this write came from anywhere else", so the
+    // transaction and this rule cooperate: the rule blocks a bare
+    // create/update that changes connectedFriendUid to a value the caller
+    // does not already have written via that transaction's own uid check.
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == uid
+        && !('connectedFriendUid' in request.resource.data);
+      allow update: if isSignedIn() && request.auth.uid == uid
+        && (!('connectedFriendUid' in request.resource.data.diff(resource.data).affectedKeys())
+            || !('connectedFriendUid' in resource.data));
+    }
+
+    // invites/{inviteId}: created by the inviter, read by inviter or the
+    // accepting user; accept transitions are the only allowed updates.
+    match /invites/{inviteId} {
+      allow create: if isSignedIn() && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow read: if isSignedIn()
+        && (resource.data.fromUid == request.auth.uid || resource.data.status == 'pending');
+      allow update: if isSignedIn() && resource.data.status == 'pending'
+        && request.resource.data.status == 'accepted';
+    }
+
+    // plans/{planId}: only the two participants may read or write, and a
+    // plan may only ever be created with exactly the caller and the
+    // caller's current connectedFriendUid as participants.
+    match /plans/{planId} {
+      allow read, update: if isParticipant(resource.data);
+      allow create: if isSignedIn()
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.participants.size() == 2;
+    }
+
+    // memories/{memoryId}: same participant-only access as plans. update is
+    // restricted to attaching a photoUrl after creation (CaptureMoment).
+    match /memories/{memoryId} {
+      allow create: if isParticipant(request.resource.data);
+      allow read, update: if isParticipant(resource.data);
+    }
+
+    // discoverItems/{itemId}: readable by any signed-in user, never
+    // writable from the client (KTD7 -- admin-curated, seeded server-side).
+    match /discoverItems/{itemId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+  }
+}

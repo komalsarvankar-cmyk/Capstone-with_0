@@ -1,28 +1,20 @@
-export type NavTab = 'home' | 'our-story' | 'discover' | 'you';
-
 export type FlowScreen =
-  | 'welcome' // Screen 1
-  | 'create-account' // Screen 2
-  | 'connect-friend' // Screen 3
-  | 'friend-connected' // Screen 4
-  | 'choose-activity' // Screen 5
-  | 'invite-friend' // Screen 6
-  | 'friend-accepts' // Screen 7
-  | 'make-plan' // Screen 8
-  | 'plan-confirmed' // Screen 9
-  | 'activity-checkin' // Screen 10
-  | 'capture-moment' // Screen 11
-  | 'shared-moment' // Screen 12
-  | 'main'; // Main app container with bottom navigation
+  | 'Welcome'
+  | 'CreateAccount'
+  | 'ConnectFriend'
+  | 'FriendConnected'
+  | 'ChooseActivity'
+  | 'InviteFriend'
+  | 'FriendAccepts'
+  | 'MakePlan'
+  | 'PlanConfirmed'
+  | 'ActivityCheckin'
+  | 'CaptureMoment'
+  | 'SharedMoment';
 
-export type ScreenId = FlowScreen;
+export type NavTab = 'Home' | 'OurStory' | 'Discover' | 'You';
 
-export type EmotionalState =
-  | 'fun'
-  | 'calming'
-  | 'meaningful'
-  | 'unexpected'
-  | 'just-nice';
+export type EmotionalState = 'fun' | 'calming' | 'meaningful' | 'unexpected' | 'just-nice';
 
 export interface EmotionalConfig {
   id: EmotionalState;
@@ -30,7 +22,6 @@ export interface EmotionalConfig {
   dotColor: string;
   bgColor: string;
   textColor: string;
-  borderColor: string;
   description: string;
 }
 
@@ -39,52 +30,38 @@ export interface Activity {
   title: string;
   duration: string;
   description: string;
-  iconName: 'walk' | 'sunset' | 'utensils' | 'gamepad' | 'music' | 'coffee' | 'book' | 'compass' | 'camera' | 'sparkles' | 'bike' | 'palette';
+  iconName: string;
   locationType: 'in-person' | 'remote' | 'either';
   tags: string[];
 }
 
+/** Mirrors the `plans/{planId}` Firestore document (docs/data-model.md). */
 export interface Plan {
   id: string;
+  participants: [string, string];
   activityId: string;
   activityTitle: string;
-  duration: string;
-  date: string;
-  time: string;
-  displayDateTime: string;
-  initiator: string;
-  recipient: string;
+  scheduledAt: number;
   note?: string;
-  recurrence: 'none' | 'daily' | 'weekly' | 'monthly';
-  recurrenceDuration?: '1 week' | '2 weeks' | '1 month' | '3 months' | 'custom';
   status: 'pending' | 'accepted' | 'completed';
+  reminderSent?: boolean;
 }
 
+/** Mirrors the `memories/{memoryId}` Firestore document. */
 export interface SharedMemory {
   id: string;
+  participants: [string, string];
   activityTitle: string;
-  dateStr: string;
-  month?: 'SEPTEMBER' | 'AUGUST' | 'JULY' | 'JUNE' | 'MAY' | string;
-  year?: string;
-  userEmotion: EmotionalState;
-  friendEmotion: EmotionalState;
-  userEmotionLabel?: string;
-  friendEmotionLabel?: string;
+  occurredAt: number;
+  emotions: Partial<Record<string, EmotionalState>>;
   photoUrl?: string;
   note?: string;
-  voiceDuration?: string;
-  voiceNoteDuration?: string;
-  isMilestone?: boolean;
-  milestoneTitle?: string;
 }
 
-export interface JournalPrompt {
-  id: string;
-  prompt: string;
-  response?: string;
-  answeredBy?: string;
-  date?: string;
-  saved: boolean;
+export interface Contact {
+  uid: string;
+  displayName: string;
+  initials: string;
 }
 
 export interface DiscoverItem {
@@ -100,11 +77,10 @@ export interface DiscoverItem {
   duration: string;
 }
 
-export interface Contact {
-  id: string;
-  name: string;
-  initials: string;
-  phone: string;
-  location?: string;
-  avatarBg?: string;
+/** Mirrors the `users/{uid}` Firestore document. */
+export interface UserDoc {
+  uid: string;
+  displayName: string;
+  connectedFriendUid?: string;
+  expoPushToken?: string;
 }

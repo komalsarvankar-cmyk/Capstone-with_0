@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+.expo/
+*.orig.*
+web-build/
+functions/node_modules/
+functions/lib/
